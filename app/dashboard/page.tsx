@@ -20,7 +20,6 @@ export default function DashboardPage() {
   const [selectedVideo, setSelectedVideo] = useState<string>('');
   const [selectedAudio, setSelectedAudio] = useState<string>('');
   const [isScriptModalOpen, setIsScriptModalOpen] = useState(false);
-  const [isEditRequested, setIsEditRequested] = useState(false);
   const [editRequestText, setEditRequestText] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [scriptContent, setScriptContent] = useState(`
@@ -140,12 +139,10 @@ export default function DashboardPage() {
   };
 
   const handleEditRequest = () => {
-    setIsEditRequested(true);
     setShowConfirmation(true);
   };
 
   const handleEditCancel = () => {
-    setIsEditRequested(false);
     setEditRequestText('');
     setShowConfirmation(false);
   };
@@ -153,7 +150,6 @@ export default function DashboardPage() {
   const handleEditConfirm = () => {
     // 編集リクエストの処理をここに実装
     console.log('編集リクエスト:', editRequestText);
-    setIsEditRequested(false);
     setEditRequestText('');
     setShowConfirmation(false);
   };
