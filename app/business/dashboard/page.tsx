@@ -2,9 +2,9 @@
 
 import { useRef, useState, useEffect } from 'react';
 import { Card, Button, CardHeader, CardBody, CardFooter, Select, SelectItem, Textarea, Modal, ModalBody, ModalFooter, NextUIProvider } from '@nextui-org/react';
-import Header from '../components/Header';
-import Sidebar from '../components/Sidebar';
-import Footer from '../components/Footer';
+import Header from '../../components/Header';
+import Sidebar from '../../components/Editor_Sidebar';
+import Footer from '../../components/Footer';
 
 export default function DashboardPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -179,10 +179,10 @@ export default function DashboardPage() {
                         label="カメラを選択"
                         value={selectedVideo}
                         onChange={(e) => setSelectedVideo(e.target.value)}
-                        className="flex-1"
+                        className="flex-1 text-black"
                       >
                         {devices.videoDevices.map((device) => (
-                          <SelectItem key={device.deviceId} value={device.deviceId}>
+                          <SelectItem key={device.deviceId} value={device.deviceId} className="text-black">
                             {device.label || `カメラ ${device.deviceId.slice(0, 5)}...`}
                           </SelectItem>
                         ))}
@@ -191,10 +191,10 @@ export default function DashboardPage() {
                         label="マイクを選択"
                         value={selectedAudio}
                         onChange={(e) => setSelectedAudio(e.target.value)}
-                        className="flex-1"
+                        className="flex-1 text-black"
                       >
                         {devices.audioDevices.map((device) => (
-                          <SelectItem key={device.deviceId} value={device.deviceId}>
+                          <SelectItem key={device.deviceId} value={device.deviceId} className="text-black">
                             {device.label || `マイク ${device.deviceId.slice(0, 5)}...`}
                           </SelectItem>
                         ))}
@@ -219,6 +219,7 @@ export default function DashboardPage() {
                       <Button 
                         color="primary"
                         onPress={startRecording}
+                        
                       >
                         録画開始
                       </Button>
@@ -226,6 +227,7 @@ export default function DashboardPage() {
                       <Button 
                         color="danger"
                         onPress={stopRecording}
+                        className="text-black"
                       >
                         録画停止
                       </Button>

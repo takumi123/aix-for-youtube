@@ -28,10 +28,10 @@ export default function Sidebar() {
           href="/next-actions" 
           className="block px-4 py-2 text-gray-700 hover:bg-gray-200 rounded"
         >
-          ネクストアクション
+          Youtube設定
         </Link>
         <Link 
-          href="/form-settings" 
+          href="/youtube-settings" 
           className="block px-4 py-2 text-gray-700 hover:bg-gray-200 rounded"
         >
           フォーム設定

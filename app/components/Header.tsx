@@ -1,54 +1,37 @@
 'use client';
 
-import { Navbar, NavbarBrand, NavbarContent, NavbarItem, Link, Button } from "@nextui-org/react";
+import { Navbar, NavbarBrand, NavbarContent, NavbarItem, Link, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, User } from "@nextui-org/react";
 
 export default function Header() {
   return (
-    <Navbar>
+    <Navbar className="text-black">
       <NavbarBrand>
-        <Link href="/" className="font-bold text-inherit">
-          15分動画作成
+        <Link href="/" className="font-bold text-black">
+          AIx for Youtube
         </Link>
       </NavbarBrand>
 
-      <NavbarContent className="hidden sm:flex gap-4" justify="center">
-        <NavbarItem>
-          <Link href="/dashboard" color="foreground">
-            動画撮影
-          </Link>
-        </NavbarItem>
-        <NavbarItem>
-          <Link href="/videos" color="foreground">
-            過去動画一覧
-          </Link>
-        </NavbarItem>
-        <NavbarItem>
-          <Link href="/analytics" color="foreground">
-            分析
-          </Link>
-        </NavbarItem>
-        <NavbarItem>
-          <Link href="/next-actions" color="foreground">
-            ネクストアクション
-          </Link>
-        </NavbarItem>
-        <NavbarItem>
-          <Link href="/form-settings" color="foreground">
-            フォーム設定
-          </Link>
-        </NavbarItem>
-        <NavbarItem>
-          <Link href="/settings" color="foreground">
-            設定
-          </Link>
-        </NavbarItem>
-      </NavbarContent>
-
       <NavbarContent justify="end">
         <NavbarItem>
-          <Button as={Link} color="primary" href="/dashboard" variant="flat">
-            撮影を始める
-          </Button>
+          <Dropdown>
+            <DropdownTrigger>
+              <User
+                name="ユーザー名"
+                description="user@example.com"
+                avatarProps={{
+                  src: "https://example.com/avatar.jpg"
+                }}
+                className="cursor-pointer text-black"
+              />
+            </DropdownTrigger>
+            <DropdownMenu aria-label="ユーザーアクション" className="text-black">
+              <DropdownItem key="profile" className="text-black">プロフィール</DropdownItem>
+              <DropdownItem key="settings" className="text-black">設定</DropdownItem>
+              <DropdownItem key="logout" color="danger" className="text-black">
+                ログアウト
+              </DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
         </NavbarItem>
       </NavbarContent>
     </Navbar>
