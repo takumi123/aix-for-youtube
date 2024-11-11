@@ -1,15 +1,17 @@
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
-import { Card, Button, CardHeader, CardBody, CardFooter, Select, SelectItem, Textarea, Modal, ModalBody, ModalFooter, NextUIProvider } from '@nextui-org/react';
+import { Card, Button, CardHeader, CardBody, CardFooter, Select, SelectItem, Textarea, NextUIProvider } from '@nextui-org/react';
 import Header from '../../components/Header';
-import Sidebar from '../../components/Editor_Sidebar';
+import Sidebar from '../../components/Business_Sidebar';
 import Footer from '../../components/Footer';
+import type { PutBlobResult } from '@vercel/blob';
+import CheckoutButton from '../../components/CheckoutButton';
 
 export default function DashboardPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const scriptRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const inputFileRef = useRef<HTMLInputElement>(null);
   const [recording, setRecording] = useState(false);
   const [recordedVideo, setRecordedVideo] = useState<string | null>(null);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -19,9 +21,10 @@ export default function DashboardPage() {
   }>({ videoDevices: [], audioDevices: [] });
   const [selectedVideo, setSelectedVideo] = useState<string>('');
   const [selectedAudio, setSelectedAudio] = useState<string>('');
-  const [isScriptModalOpen, setIsScriptModalOpen] = useState(false);
   const [editRequestText, setEditRequestText] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [blob, setBlob] = useState<PutBlobResult | null>(null);
+  
   const [scriptContent, setScriptContent] = useState(`
     こんにちは。本日のテーマは「効果的なクライアント集客方法」についてお話しします。
     
@@ -49,7 +52,13 @@ export default function DashboardPage() {
   useEffect(() => {
     const getDevices = async () => {
       try {
-        await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        await navigator.mediaDevices.getUserMedia({ 
+          video: {
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          }, 
+          audio: true 
+        });
         const devices = await navigator.mediaDevices.enumerateDevices();
         const videoDevices = devices.filter(device => device.kind === 'videoinput');
         const audioDevices = devices.filter(device => device.kind === 'audioinput');
@@ -75,7 +84,11 @@ export default function DashboardPage() {
       
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { deviceId: selectedVideo },
+          video: { 
+            deviceId: selectedVideo,
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          },
           audio: { deviceId: selectedAudio }
         });
         if (videoRef.current) {
@@ -138,8 +151,31 @@ export default function DashboardPage() {
     }
   };
 
-  const handleEditRequest = () => {
-    setShowConfirmation(true);
+  const handleEditRequest = async (event: React.FormEvent) => {
+    event.preventDefault();
+    
+    if (!recordedVideo) return;
+
+    try {
+      const response = await fetch(recordedVideo);
+      const videoBlob = await response.blob();
+      const filename = `video_${Date.now()}.webm`;
+
+      const uploadResponse = await fetch(`/api/upload/video?filename=${filename}`, {
+        method: 'POST',
+        body: videoBlob
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`アップロードに失敗しました: ${uploadResponse.statusText}`);
+      }
+
+      const newBlob = await uploadResponse.json() as PutBlobResult;
+      setBlob(newBlob);
+      setShowConfirmation(true);
+    } catch (error) {
+      console.error('動画のアップロードに失敗:', error instanceof Error ? error.message : String(error));
+    }
   };
 
   const handleEditCancel = () => {
@@ -150,6 +186,7 @@ export default function DashboardPage() {
   const handleEditConfirm = () => {
     // 編集リクエストの処理をここに実装
     console.log('編集リクエスト:', editRequestText);
+    console.log('動画URL:', blob?.url);
     setEditRequestText('');
     setShowConfirmation(false);
   };
@@ -159,13 +196,15 @@ export default function DashboardPage() {
       <div className="min-h-screen bg-white">
         <Header />
         <div className="flex">
-          <Sidebar />
+          <div className="mr-4">
+            <Sidebar />
+          </div>
           <div className="container mx-auto px-4">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-              {/* 左カラム: カメラ/録画エリア */}
-              <div className="md:col-span-8">
-                <Card className="p-6 h-full">
-                  <CardHeader className="flex flex-col gap-4">
+            <div className="flex gap-4">
+              {/* 左カラム: ��メラ/録画エリア */}
+              <div className="w-[60%]">
+                <Card className="p-4 h-full mt-4">
+                  <CardHeader className="flex flex-col gap-4 px-4">
                     <div className="flex justify-between items-center w-full">
                       <p className="text-xl font-semibold">撮影画面</p>
                       {recording && (
@@ -219,7 +258,6 @@ export default function DashboardPage() {
                       <Button 
                         color="primary"
                         onPress={startRecording}
-                        
                       >
                         録画開始
                       </Button>
@@ -244,20 +282,23 @@ export default function DashboardPage() {
                         playsInline
                         style={{ width: '100%', maxHeight: '300px' }}
                       />
-                      <div className="flex gap-4">
-                        <Button 
-                          color="primary"
-                          onPress={handleEditRequest}
-                        >
-                          編集を依頼
-                        </Button>
-                        <Button 
-                          color="danger"
-                          onPress={handleEditCancel}
-                        >
-                          取り消し
-                        </Button>
-                      </div>
+                      <form onSubmit={handleEditRequest}>
+                        <input type="file" ref={inputFileRef} className="hidden" />
+                        <div className="flex gap-4">
+                          <Button 
+                            color="primary"
+                            type="submit"
+                          >
+                            編集を依頼
+                          </Button>
+                          <Button 
+                            color="danger"
+                            onPress={handleEditCancel}
+                          >
+                            取り消し
+                          </Button>
+                        </div>
+                      </form>
                       {showConfirmation && (
                         <div className="flex flex-col gap-4">
                           <Textarea
@@ -273,32 +314,70 @@ export default function DashboardPage() {
                           >
                             確認して続行
                           </Button>
+                          {blob && (
+                            <div className="flex flex-col gap-2">
+                              <div>
+                                アップロードされた動画URL: <a href={blob.url} target="_blank" rel="noopener noreferrer">{blob.url}</a>
+                              </div>
+                              <Button
+                                color="primary"
+                                onClick={() => {
+                                  // 新しいタブで開く
+                                  window.open(blob.url, '_blank');
+                                  
+                                  // ダウンロードリンクを作成して実行
+                                  const link = document.createElement('a');
+                                  link.href = blob.url;
+                                  link.download = 'recorded-video.mp4';
+                                  link.target = '_blank';
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                }}
+                              >
+                                動画をダウンロード
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </CardBody>
                   )}
+                  {/* CheckoutButtonコンポーネントのインポート */}
+                  <div className="mt-4 grid grid-cols-3 gap-4">
+                    <CheckoutButton
+                      priceId="price_1QIuJfAQCAJwNpqU5qZ0Exdp"
+                      planName="高品質編集プラン"
+                      price={20000}
+                    />
+                    <CheckoutButton
+                      priceId="price_1QIuJfAQCAJwNpqUvwP97XVq" 
+                      planName="スタンダード編集プラン"
+                      price={15000}
+                    />
+                    <CheckoutButton
+                      priceId="price_1QIuJfAQCAJwNpqUQ4ixqGTx"
+                      planName="ベーシック編集プラン"
+                      price={10000}
+                    />
+                  </div>
                 </Card>
               </div>
-
-              {/* 右カラム: 台本表示エリア */}
-              <div className="md:col-span-4">
-                <Card className="p-6 h-full">
-                  <CardHeader className="flex justify-between items-center">
+              {/* 台本表示エリア */}
+              <div className="w-[40%] mt-4">
+                <Card className="p-4 ">
+                  <CardHeader className="flex justify-between items-center mb-2 py-2">
                     <p className="text-xl font-semibold">台本</p>
-                    <Button 
-                      color="primary" 
-                      size="sm"
-                      onPress={() => setIsScriptModalOpen(true)}
-                    >
-                      全画面表示
-                    </Button>
                   </CardHeader>
                   <CardBody>
-                    <div 
-                      ref={scriptRef}
-                      className="whitespace-pre-wrap text-lg leading-relaxed h-[500px] overflow-y-auto"
-                    >
-                      {scriptContent}
+                    <div className="">
+                      <Textarea
+                        value={scriptContent}
+                        onChange={(e) => setScriptContent(e.target.value)}
+                        className="w-full text-lg h-full"
+                        minRows={150}
+                        placeholder="台本を入力してください"
+                      />
                     </div>
                   </CardBody>
                 </Card>
@@ -306,29 +385,9 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-
-        {/* 台本全画面モーダル */}
-        <Modal 
-          isOpen={isScriptModalOpen} 
-          onClose={() => setIsScriptModalOpen(false)}
-          className="w-screen h-screen"
-          size="full"
-        >
-          <ModalBody className="h-full">
-            <Textarea
-              value={scriptContent}
-              onChange={(e) => setScriptContent(e.target.value)}
-              className="w-full h-full text-lg"
-              minRows={30}
-            />
-          </ModalBody>
-          <ModalFooter>
-            <Button color="primary" onPress={() => setIsScriptModalOpen(false)}>
-              閉じる
-            </Button>
-          </ModalFooter>
-        </Modal>
-        <Footer />
+        <div className="mt-8">
+          <Footer />
+        </div>
       </div>
     </NextUIProvider>
   );
