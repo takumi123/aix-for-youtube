@@ -1,8 +1,15 @@
 'use client';
 
 import { Navbar, NavbarBrand, NavbarContent, NavbarItem, Link, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, User } from "@nextui-org/react";
+import { signOut } from "next-auth/react";
 
-export default function Header() {
+interface HeaderProps {
+  userName?: string | null;
+  userEmail?: string | null;
+  userImage?: string | null;
+}
+
+export default function Header({ userName, userEmail, userImage }: HeaderProps) {
   return (
     <Navbar className="text-black">
       <NavbarBrand>
@@ -16,10 +23,10 @@ export default function Header() {
           <Dropdown>
             <DropdownTrigger>
               <User
-                name="ユーザー名"
-                description="user@example.com"
+                name={userName || "ゲスト"}
+                description={userEmail || "未ログイン"}
                 avatarProps={{
-                  src: "https://example.com/avatar.jpg"
+                  src: userImage || "/default-avatar.png"
                 }}
                 className="cursor-pointer text-black"
               />
@@ -27,7 +34,12 @@ export default function Header() {
             <DropdownMenu aria-label="ユーザーアクション" className="text-black">
               <DropdownItem key="profile" className="text-black">プロフィール</DropdownItem>
               <DropdownItem key="settings" className="text-black">設定</DropdownItem>
-              <DropdownItem key="logout" color="danger" className="text-black">
+              <DropdownItem 
+                key="logout" 
+                color="danger" 
+                className="text-black"
+                onPress={() => signOut({ callbackUrl: '/auth/login' })}
+              >
                 ログアウト
               </DropdownItem>
             </DropdownMenu>

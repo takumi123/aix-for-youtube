@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { Card, Button, CardHeader, CardBody, CardFooter, Select, SelectItem, Textarea, NextUIProvider } from '@nextui-org/react';
 import Header from '../../components/Header';
 import Sidebar from '../../components/Business_Sidebar';
@@ -9,6 +10,7 @@ import type { PutBlobResult } from '@vercel/blob';
 import CheckoutButton from '../../components/CheckoutButton';
 
 export default function DashboardPage() {
+  const { data: session } = useSession();
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const inputFileRef = useRef<HTMLInputElement>(null);
@@ -194,14 +196,19 @@ export default function DashboardPage() {
   return (
     <NextUIProvider>
       <div className="min-h-screen bg-white">
-        <Header />
+        <Header 
+          userName={session?.user?.name}
+          userEmail={session?.user?.email}
+          userImage={session?.user?.image}
+        />
         <div className="flex">
           <div className="mr-4">
             <Sidebar />
           </div>
           <div className="container mx-auto px-4">
+            {/* ユーザー情報セクション */}
             <div className="flex gap-4">
-              {/* 左カラム: ��メラ/録画エリア */}
+              {/* 左カラム: カメラ/録画エリア */}
               <div className="w-[60%]">
                 <Card className="p-4 h-full mt-4">
                   <CardHeader className="flex flex-col gap-4 px-4">
