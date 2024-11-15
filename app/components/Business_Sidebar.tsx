@@ -13,36 +13,25 @@ export default function Sidebar() {
           動画撮影
         </Link>
         <Link 
-          href="/business/videos" 
+          href="/business/movies" 
           className="block px-4 py-2 text-gray-700 hover:bg-gray-200 rounded"
         >
           過去動画一覧
         </Link>
         <Link 
-          href="/business/analytics" 
+          href="/business/scripts" 
           className="block px-4 py-2 text-gray-700 hover:bg-gray-200 rounded"
         >
-          分析
-        </Link>
-        <Link 
-          href="/business/setting" 
-          className="block px-4 py-2 text-gray-700 hover:bg-gray-200 rounded"
-        >
-          Youtube設定
+          台本一覧
         </Link>
         <Link 
           href="/business/knowledge" 
           className="block px-4 py-2 text-gray-700 hover:bg-gray-200 rounded"
         >
-          ノウハウ
+          ナレッジベース
         </Link>
         <Link 
-          href="/business/consulting" 
-          className="block px-4 py-2 text-gray-700 hover:bg-gray-200 rounded"
-        >
-          コンサルティング
-        </Link>        <Link 
-          href="/business/settings" 
+          href="/business/setting" 
           className="block px-4 py-2 text-gray-700 hover:bg-gray-200 rounded"
         >
           設定

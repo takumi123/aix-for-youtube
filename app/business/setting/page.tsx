@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { Card, CardBody, CardHeader, Switch, Button, Tabs, Tab, Select, SelectItem } from '@nextui-org/react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 
 interface YouTubeStats {
   subscriberCount: string;
@@ -102,7 +101,8 @@ export default function SettingPage() {
               <CardBody>
                 <div className="flex items-center gap-4">
                   {session.user.image && (
-                    <Image
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
                       src={session.user.image}
                       alt="Profile"
                       width={64}

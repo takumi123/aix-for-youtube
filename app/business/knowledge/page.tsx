@@ -1,9 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Header from "@/app/components/Header";
-import Sidebar from "@/app/components/Business_Sidebar";
-import Footer from "@/app/components/Footer";
 import { useSession, signOut } from 'next-auth/react';
 
 export default function Knowledge() {
@@ -37,9 +34,9 @@ export default function Knowledge() {
 
   return (
       <div className="min-h-screen bg-white text-black">
-        <Header />
+
         <div className="flex">
-          <Sidebar />
+
           <div className="flex-1 p-8">
             {/* ユーザー情報セクション */}
             <div className="mb-8 bg-white p-6 rounded-lg shadow">
@@ -223,7 +220,6 @@ export default function Knowledge() {
           </div>
         </div>
         <div className="mt-8">
-          <Footer />
         </div>
       </div>
   );

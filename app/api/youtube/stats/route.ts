@@ -1,12 +1,13 @@
 import { google } from 'googleapis';
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
+import { getServerSession } from 'next-auth';
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import type { Session } from 'next-auth';
 
 export async function GET() {
   try {
     // セッションを取得
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions) as Session;
     
     // デバッグログ出力
     console.log('セッション情報:', session);

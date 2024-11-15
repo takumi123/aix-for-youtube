@@ -1,10 +1,7 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
 import { Card, CardHeader, CardBody, Button, Badge, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, NextUIProvider } from '@nextui-org/react';
-import Header from '../../components/Header';
-import Sidebar from '../../components/Business_Sidebar';
-import Footer from '../../components/Footer';
+
 
 type VideoStatus = '未編集' | '編集中' | '編集完了' | 'アップロード済み';
 
@@ -19,7 +16,6 @@ interface Video {
 }
 
 export default function MovieListPage() {
-  const { data: session } = useSession();
 
   // サンプルデータ
   const videos: Video[] = [
@@ -65,15 +61,8 @@ export default function MovieListPage() {
   return (
     <NextUIProvider>
       <div className="min-h-screen bg-white">
-        <Header 
-          userName={session?.user?.name}
-          userEmail={session?.user?.email}
-          userImage={session?.user?.image}
-        />
+
         <div className="flex">
-          <div className="mr-4">
-            <Sidebar />
-          </div>
           <div className="container mx-auto px-4 py-8">
             <Card className="w-full">
               <CardHeader className="flex justify-between items-center px-6 py-4">
@@ -151,7 +140,6 @@ export default function MovieListPage() {
             </Card>
           </div>
         </div>
-        <Footer />
       </div>
     </NextUIProvider>
   );

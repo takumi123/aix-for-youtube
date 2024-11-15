@@ -1,16 +1,11 @@
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
 import { Card, Button, CardHeader, CardBody, CardFooter, Select, SelectItem, Textarea, NextUIProvider } from '@nextui-org/react';
-import Header from '../../components/Header';
-import Sidebar from '../../components/Business_Sidebar';
-import Footer from '../../components/Footer';
 import type { PutBlobResult } from '@vercel/blob';
 import CheckoutButton from '../../components/CheckoutButton';
 
 export default function DashboardPage() {
-  const { data: session } = useSession();
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const inputFileRef = useRef<HTMLInputElement>(null);
@@ -214,239 +209,224 @@ export default function DashboardPage() {
 
   return (
     <NextUIProvider>
-      <div className="min-h-screen bg-white">
-        <Header 
-          userName={session?.user?.name}
-          userEmail={session?.user?.email}
-          userImage={session?.user?.image}
-        />
-        <div className="flex">
-          <div className="mr-4">
-            <Sidebar />
-          </div>
-          <div className="container mx-auto px-4">
-            {/* ユーザー情報セクション */}
-            <div className="flex gap-4">
-              {/* 左カラム: カメラ/録画エリア */}
-              <div className="w-[60%]">
-                <Card className="p-4 h-full mt-4">
-                  <CardHeader className="flex flex-col gap-4 px-4">
-                    <div className="flex justify-between items-center w-full">
-                      <p className="text-xl font-semibold">撮影画面</p>
-                      {recording && (
-                        <p className="text-red-500">
-                          録画時間: {Math.floor(recordingTime / 60)}:{String(recordingTime % 60).padStart(2, '0')}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex gap-4 w-full">
-                      <Select 
-                        label="カメラを選択"
-                        value={selectedVideo}
-                        onChange={(e) => setSelectedVideo(e.target.value)}
-                        className="flex-1 text-black"
-                      >
-                        {devices.videoDevices.map((device) => (
-                          <SelectItem key={device.deviceId} value={device.deviceId} className="text-black">
-                            {device.label || `カメラ ${device.deviceId.slice(0, 5)}...`}
-                          </SelectItem>
-                        ))}
-                      </Select>
-                      <Select 
-                        label="マイクを選択"
-                        value={selectedAudio}
-                        onChange={(e) => setSelectedAudio(e.target.value)}
-                        className="flex-1 text-black"
-                      >
-                        {devices.audioDevices.map((device) => (
-                          <SelectItem key={device.deviceId} value={device.deviceId} className="text-black">
-                            {device.label || `マイク ${device.deviceId.slice(0, 5)}...`}
-                          </SelectItem>
-                        ))}
-                      </Select>
-                    </div>
-                  </CardHeader>
-                  
-                  {/* ライブカメラプレビュー */}
-                  <CardBody>
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      style={{ width: '100%', maxHeight: '400px' }}
-                    />
-                  </CardBody>
+      <div className="container mx-auto px-4">
+        {/* ユーザー情報セクション */}
+        <div className="flex gap-4">
+          {/* 左カラム: カメラ/録画エリア */}
+          <div className="w-[60%]">
+            <Card className="p-4 h-full mt-4">
+              <CardHeader className="flex flex-col gap-4 px-4">
+                <div className="flex justify-between items-center w-full">
+                  <p className="text-xl font-semibold">撮影画面</p>
+                  {recording && (
+                    <p className="text-red-500">
+                      録画時間: {Math.floor(recordingTime / 60)}:{String(recordingTime % 60).padStart(2, '0')}
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-4 w-full">
+                  <Select 
+                    label="カメラを選択"
+                    value={selectedVideo}
+                    onChange={(e) => setSelectedVideo(e.target.value)}
+                    className="flex-1 text-black"
+                  >
+                    {devices.videoDevices.map((device) => (
+                      <SelectItem key={device.deviceId} value={device.deviceId} className="text-black">
+                        {device.label || `カメラ ${device.deviceId.slice(0, 5)}...`}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                  <Select 
+                    label="マイクを選択"
+                    value={selectedAudio}
+                    onChange={(e) => setSelectedAudio(e.target.value)}
+                    className="flex-1 text-black"
+                  >
+                    {devices.audioDevices.map((device) => (
+                      <SelectItem key={device.deviceId} value={device.deviceId} className="text-black">
+                        {device.label || `マイク ${device.deviceId.slice(0, 5)}...`}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </div>
+              </CardHeader>
+              
+              {/* ライブカメラプレビュー */}
+              <CardBody>
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  style={{ width: '100%', maxHeight: '400px' }}
+                />
+              </CardBody>
 
-                  {/* 録画コントロール */}
-                  <CardFooter>
-                    {!recording ? (
+              {/* 録画コントロール */}
+              <CardFooter>
+                {!recording ? (
+                  <Button 
+                    color="primary"
+                    onPress={startRecording}
+                  >
+                    録画開始
+                  </Button>
+                ) : (
+                  <Button 
+                    color="danger"
+                    onPress={stopRecording}
+                    className="text-black"
+                  >
+                    録画停止
+                  </Button>
+                )}
+              </CardFooter>
+
+              {/* 録画済みビデオ再生と編集コントロール */}
+              {recordedVideo && (
+                <CardBody className="flex flex-col gap-4">
+                  <p className="text-xl font-semibold">録画プレビュー</p>
+                  <video
+                    src={recordedVideo}
+                    controls
+                    playsInline
+                    style={{ width: '100%', maxHeight: '300px' }}
+                  />
+                  <form onSubmit={handleEditRequest}>
+                    <input type="file" ref={inputFileRef} className="hidden" />
+                    <div className="flex gap-4">
                       <Button 
                         color="primary"
-                        onPress={startRecording}
+                        type="submit"
                       >
-                        録画開始
+                        編集を依頼
                       </Button>
-                    ) : (
                       <Button 
                         color="danger"
-                        onPress={stopRecording}
-                        className="text-black"
+                        onPress={handleEditCancel}
                       >
-                        録画停止
+                        取り消し
                       </Button>
-                    )}
-                  </CardFooter>
-
-                  {/* 録画済みビデオ再生と編集コントロール */}
-                  {recordedVideo && (
-                    <CardBody className="flex flex-col gap-4">
-                      <p className="text-xl font-semibold">録画プレビュー</p>
-                      <video
-                        src={recordedVideo}
-                        controls
-                        playsInline
-                        style={{ width: '100%', maxHeight: '300px' }}
+                    </div>
+                  </form>
+                  {showConfirmation && (
+                    <div className="flex flex-col gap-4">
+                      <Textarea
+                        label="編集リクエスト内容"
+                        placeholder="編集内容を入力してください"
+                        value={editRequestText}
+                        onChange={(e) => setEditRequestText(e.target.value)}
+                        minRows={3}
                       />
-                      <form onSubmit={handleEditRequest}>
-                        <input type="file" ref={inputFileRef} className="hidden" />
-                        <div className="flex gap-4">
-                          <Button 
+                      <Button 
+                        color="success"
+                        onPress={handleEditConfirm}
+                      >
+                        確認して続行
+                      </Button>
+                      {blob && (
+                        <div className="flex flex-col gap-2">
+                          <div>
+                            アップロードされた動画URL: <a href={blob.url} target="_blank" rel="noopener noreferrer">{blob.url}</a>
+                          </div>
+                          <Button
                             color="primary"
-                            type="submit"
+                            onClick={() => {
+                              // 新しいタブで開く
+                              window.open(blob.url, '_blank');
+                              
+                              // ダウンロードリンクを作成して実行
+                              const link = document.createElement('a');
+                              link.href = blob.url;
+                              link.download = 'recorded-video.mp4';
+                              link.target = '_blank';
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                            }}
                           >
-                            編集を依頼
+                            動画をダウンロード
                           </Button>
-                          <Button 
-                            color="danger"
-                            onPress={handleEditCancel}
-                          >
-                            取り消し
-                          </Button>
-                        </div>
-                      </form>
-                      {showConfirmation && (
-                        <div className="flex flex-col gap-4">
-                          <Textarea
-                            label="編集リクエスト内容"
-                            placeholder="編集内容を入力してください"
-                            value={editRequestText}
-                            onChange={(e) => setEditRequestText(e.target.value)}
-                            minRows={3}
-                          />
-                          <Button 
-                            color="success"
-                            onPress={handleEditConfirm}
-                          >
-                            確認して続行
-                          </Button>
-                          {blob && (
-                            <div className="flex flex-col gap-2">
-                              <div>
-                                アップロードされた動画URL: <a href={blob.url} target="_blank" rel="noopener noreferrer">{blob.url}</a>
-                              </div>
-                              <Button
-                                color="primary"
-                                onClick={() => {
-                                  // 新しいタブで開く
-                                  window.open(blob.url, '_blank');
-                                  
-                                  // ダウンロードリンクを作成して実行
-                                  const link = document.createElement('a');
-                                  link.href = blob.url;
-                                  link.download = 'recorded-video.mp4';
-                                  link.target = '_blank';
-                                  document.body.appendChild(link);
-                                  link.click();
-                                  document.body.removeChild(link);
-                                }}
-                              >
-                                動画をダウンロード
-                              </Button>
-                            </div>
-                          )}
                         </div>
                       )}
-                    </CardBody>
+                    </div>
                   )}
-                  {/* CheckoutButtonコンポーネントのインポート */}
-                  <div className="mt-4 grid grid-cols-3 gap-4">
-                    <CheckoutButton
-                      priceId="price_1QIuJfAQCAJwNpqU5qZ0Exdp"
-                      planName="高品質編集プラン"
-                      price={20000}
-                    />
-                    <CheckoutButton
-                      priceId="price_1QIuJfAQCAJwNpqUvwP97XVq" 
-                      planName="スタンダード編集プラン"
-                      price={15000}
-                    />
-                    <CheckoutButton
-                      priceId="price_1QIuJfAQCAJwNpqUQ4ixqGTx"
-                      planName="ベーシック編集プラン"
-                      price={10000}
+                </CardBody>
+              )}
+              {/* CheckoutButtonコンポーネントのインポート */}
+              <div className="mt-4 grid grid-cols-3 gap-4">
+                <CheckoutButton
+                  priceId="price_1QIuJfAQCAJwNpqU5qZ0Exdp"
+                  planName="高品質編集プラン"
+                  price={20000}
+                />
+                <CheckoutButton
+                  priceId="price_1QIuJfAQCAJwNpqUvwP97XVq" 
+                  planName="スタンダード編集プラン"
+                  price={15000}
+                />
+                <CheckoutButton
+                  priceId="price_1QIuJfAQCAJwNpqUQ4ixqGTx"
+                  planName="ベーシック編集プラン"
+                  price={10000}
+                />
+              </div>
+            </Card>
+          </div>
+          {/* 台本表示エリア */}
+          <div className="w-[40%] mt-4">
+            <Card className="p-4 h-[calc(100vh-200px)] flex flex-col">
+              <CardHeader className="flex justify-between items-center py-2">
+                <p className="text-xl font-semibold">台本</p>
+              </CardHeader>
+              <CardBody>
+                <div className="relative">
+                  <div 
+                    className="overflow-auto"
+                    ref={scriptRef}
+                    style={{ height: 'calc(100vh - 300px)' }}
+                  >
+                    <Textarea
+                      value={scriptContent}
+                      onChange={(e) => setScriptContent(e.target.value)}
+                      className="w-full text-lg"
+                      placeholder="台本を入力してください"
+                      maxRows={2000}
                     />
                   </div>
-                </Card>
-              </div>
-              {/* 台本表示エリア */}
-              <div className="w-[40%] mt-4">
-                <Card className="p-4 h-[calc(100vh-200px)] flex flex-col">
-                  <CardHeader className="flex justify-between items-center py-2">
-                    <p className="text-xl font-semibold">台本</p>
-                  </CardHeader>
-                  <CardBody>
-                    <div className="relative">
-                      <div 
-                        className="overflow-auto"
-                        ref={scriptRef}
-                        style={{ height: 'calc(100vh - 300px)' }}
-                      >
-                        <Textarea
-                          value={scriptContent}
-                          onChange={(e) => setScriptContent(e.target.value)}
-                          className="w-full text-lg"
-                          placeholder="台本を入力してください"
-                          maxRows={2000}
-                        />
-                      </div>
-                      <div className="absolute bottom-4 right-4 flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            if (scriptRef.current) {
-                              scriptRef.current.scrollBy({
-                                top: -100,
-                                behavior: 'smooth'
-                              });
-                            }
-                          }}
-                        >
-                          ↑
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            if (scriptRef.current) {
-                              scriptRef.current.scrollBy({
-                                top: 100,
-                                behavior: 'smooth'
-                              });
-                            }
-                          }}
-                        >
-                          ↓
-                        </Button>
-                      </div>
-                    </div>
-                  </CardBody>
-                </Card>
-              </div>
-            </div>
+                  <div className="absolute bottom-4 right-4 flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        if (scriptRef.current) {
+                          scriptRef.current.scrollBy({
+                            top: -100,
+                            behavior: 'smooth'
+                          });
+                        }
+                      }}
+                    >
+                      ↑
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        if (scriptRef.current) {
+                          scriptRef.current.scrollBy({
+                            top: 100,
+                            behavior: 'smooth'
+                          });
+                        }
+                      }}
+                    >
+                      ↓
+                    </Button>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
           </div>
-        </div>
-        <div className="mt-8">
-          <Footer />
         </div>
       </div>
     </NextUIProvider>
