@@ -7,11 +7,15 @@ import CheckoutButton from '../../components/CheckoutButton';
 
 export default function DashboardPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const screenVideoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const screenRecorderRef = useRef<MediaRecorder | null>(null);
   const inputFileRef = useRef<HTMLInputElement>(null);
   const [recording, setRecording] = useState(false);
   const [recordedVideo, setRecordedVideo] = useState<string | null>(null);
+  const [recordedScreen, setRecordedScreen] = useState<string | null>(null);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [screenSharing, setScreenSharing] = useState(false);
   const [devices, setDevices] = useState<{
     videoDevices: MediaDeviceInfo[],
     audioDevices: MediaDeviceInfo[]
@@ -21,27 +25,10 @@ export default function DashboardPage() {
   const [editRequestText, setEditRequestText] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [blob, setBlob] = useState<PutBlobResult | null>(null);
+  const [screenBlob, setScreenBlob] = useState<PutBlobResult | null>(null);
   const scriptRef = useRef<HTMLDivElement>(null);
   
   const [scriptContent, setScriptContent] = useState(`
-    こんにちは。本日のテーマは「効果的なクライアント集客方法」についてお話しします。
-    
-    私の経験から、以下の3つのポイントが重要です：
-    1. ターゲット層の明確化
-    2. 価値提供の具体化 
-    3. 継続的なコミュニケーション
-    
-    では、詳しく説明していきましょう。
-    
-    まず1つ目のターゲット層の明確化についてですが、ビジネスを成功させるためには、誰に向けてサービスを提供するのかを具体的に定める必要があります。年齢層、職業、興味関心、悩みなど、できるだけ詳細にペルソナを設定しましょう。
-    
-    2つ目の価値提供の具体化では、お客様が抱える課題に対して、どのような解決策を提供できるのかを明確にします。単なる商品やサービスの提供ではなく、それによってお客様の生活がどう改善されるのか、具体的なベネフィットを示すことが重要です。
-    
-    3つ目の継続的なコミュニケーションについては、一度きりの取引で終わらせるのではなく、長期的な関係性を築くことを目指します。定期的な情報発信やフォローアップ、カスタマーサポートの充実など、様々な接点を持ち続けることで、顧客ロイヤリティを高めることができます。
-    
-    これらの要素に加えて、オンラインマーケティングの活用も重要です。SNSやウェブサイト、メールマーケティングなど、デジタルツールを効果的に組み合わせることで、より広範囲に、かつ効率的に見込み客にアプローチすることが可能です。
-    
-    また、既存顧客からの紹介やクチコミも、新規顧客獲得の重要な手段となります。満足度の高いサービスを提供し、自然な形で推薦していただけるような関係性を構築することで、信頼性の高い形での集客が実現できます。
     こんにちは。本日のテーマは「効果的なクライアント集客方法」についてお話しします。
     
     私の経験から、以下の3つのポイントが重要です：
@@ -118,6 +105,36 @@ export default function DashboardPage() {
     initCamera();
   }, [selectedVideo, selectedAudio]);
 
+  // 画面共有の開始
+  const startScreenShare = async () => {
+    try {
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        },
+        audio: true
+      });
+      
+      if (screenVideoRef.current) {
+        screenVideoRef.current.srcObject = screenStream;
+        setScreenSharing(true);
+      }
+    } catch (err) {
+      console.error('画面共有の開始に失敗:', err);
+    }
+  };
+
+  // 画面共有の停止
+  const stopScreenShare = () => {
+    if (screenVideoRef.current && screenVideoRef.current.srcObject) {
+      const tracks = (screenVideoRef.current.srcObject as MediaStream).getTracks();
+      tracks.forEach(track => track.stop());
+      screenVideoRef.current.srcObject = null;
+      setScreenSharing(false);
+    }
+  };
+
   // 録画時間の更新
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -133,6 +150,7 @@ export default function DashboardPage() {
 
   // 録画開始
   const startRecording = () => {
+    // カメラ映像の録画
     if (videoRef.current?.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
       const recorder = new MediaRecorder(stream, {
@@ -154,40 +172,91 @@ export default function DashboardPage() {
       };
 
       recorder.start();
-      setRecording(true);
-      setRecordingTime(0);
     }
+
+    // 画面共有の録画
+    if (screenVideoRef.current?.srcObject) {
+      const screenStream = screenVideoRef.current.srcObject as MediaStream;
+      const screenRecorder = new MediaRecorder(screenStream, {
+        mimeType: 'video/webm;codecs=vp8,opus'
+      });
+      screenRecorderRef.current = screenRecorder;
+
+      const screenChunks: Blob[] = [];
+      screenRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          screenChunks.push(event.data);
+        }
+      };
+
+      screenRecorder.onstop = () => {
+        const blob = new Blob(screenChunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        setRecordedScreen(url);
+      };
+
+      screenRecorder.start();
+    }
+
+    setRecording(true);
+    setRecordingTime(0);
   };
 
   // 録画停止
   const stopRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
-      setRecording(false);
     }
+    if (screenRecorderRef.current && screenRecorderRef.current.state !== 'inactive') {
+      screenRecorderRef.current.stop();
+    }
+    setRecording(false);
   };
 
   const handleEditRequest = async (event: React.FormEvent) => {
     event.preventDefault();
     
-    if (!recordedVideo) return;
+    if (!recordedVideo && !recordedScreen) return;
 
     try {
-      const response = await fetch(recordedVideo);
-      const videoBlob = await response.blob();
-      const filename = `video_${Date.now()}.webm`;
+      // カメラ映像のアップロード
+      if (recordedVideo) {
+        const response = await fetch(recordedVideo);
+        const videoBlob = await response.blob();
+        const filename = `camera_${Date.now()}.webm`;
 
-      const uploadResponse = await fetch(`/api/upload/video?filename=${filename}`, {
-        method: 'POST',
-        body: videoBlob
-      });
+        const uploadResponse = await fetch(`/api/upload/video?filename=${filename}`, {
+          method: 'POST',
+          body: videoBlob
+        });
 
-      if (!uploadResponse.ok) {
-        throw new Error(`アップロードに失敗しました: ${uploadResponse.statusText}`);
+        if (!uploadResponse.ok) {
+          throw new Error(`カメラ映像のアップロードに失敗: ${uploadResponse.statusText}`);
+        }
+
+        const newBlob = await uploadResponse.json() as PutBlobResult;
+        setBlob(newBlob);
       }
 
-      const newBlob = await uploadResponse.json() as PutBlobResult;
-      setBlob(newBlob);
+      // 画面共有映像のアップロード
+      if (recordedScreen) {
+        const response = await fetch(recordedScreen);
+        const screenBlob = await response.blob();
+        const filename = `screen_${Date.now()}.webm`;
+
+        const uploadResponse = await fetch(`/api/upload/video?filename=${filename}`, {
+          method: 'POST',
+          body: screenBlob
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error(`画面共有映像のアップロードに失敗: ${uploadResponse.statusText}`);
+        }
+
+        const newScreenBlob = await uploadResponse.json() as PutBlobResult;
+        setScreenBlob(newScreenBlob);
+      }
+
       setShowConfirmation(true);
     } catch (error) {
       console.error('動画のアップロードに失敗:', error instanceof Error ? error.message : String(error));
@@ -202,7 +271,8 @@ export default function DashboardPage() {
   const handleEditConfirm = () => {
     // 編集リクエストの処理をここに実装
     console.log('編集リクエスト:', editRequestText);
-    console.log('動画URL:', blob?.url);
+    console.log('カメラ映像URL:', blob?.url);
+    console.log('画面共有映像URL:', screenBlob?.url);
     setEditRequestText('');
     setShowConfirmation(false);
   };
@@ -254,17 +324,47 @@ export default function DashboardPage() {
               
               {/* ライブカメラプレビュー */}
               <CardBody>
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  style={{ width: '100%', maxHeight: '400px' }}
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="mb-2">カメラ映像</p>
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      style={{ width: '100%', maxHeight: '300px' }}
+                    />
+                  </div>
+                  <div>
+                    <p className="mb-2">画面共有</p>
+                    <video
+                      ref={screenVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      style={{ width: '100%', maxHeight: '300px' }}
+                    />
+                  </div>
+                </div>
               </CardBody>
 
               {/* 録画コントロール */}
-              <CardFooter>
+              <CardFooter className="flex gap-4">
+                {!screenSharing ? (
+                  <Button 
+                    color="primary"
+                    onPress={startScreenShare}
+                  >
+                    画面共有開始
+                  </Button>
+                ) : (
+                  <Button 
+                    color="danger"
+                    onPress={stopScreenShare}
+                  >
+                    画面共有停止
+                  </Button>
+                )}
                 {!recording ? (
                   <Button 
                     color="primary"
@@ -276,7 +376,6 @@ export default function DashboardPage() {
                   <Button 
                     color="danger"
                     onPress={stopRecording}
-                    className="text-black"
                   >
                     録画停止
                   </Button>
@@ -284,15 +383,33 @@ export default function DashboardPage() {
               </CardFooter>
 
               {/* 録画済みビデオ再生と編集コントロール */}
-              {recordedVideo && (
+              {(recordedVideo || recordedScreen) && (
                 <CardBody className="flex flex-col gap-4">
                   <p className="text-xl font-semibold">録画プレビュー</p>
-                  <video
-                    src={recordedVideo}
-                    controls
-                    playsInline
-                    style={{ width: '100%', maxHeight: '300px' }}
-                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    {recordedVideo && (
+                      <div>
+                        <p className="mb-2">カメラ映像</p>
+                        <video
+                          src={recordedVideo}
+                          controls
+                          playsInline
+                          style={{ width: '100%', maxHeight: '300px' }}
+                        />
+                      </div>
+                    )}
+                    {recordedScreen && (
+                      <div>
+                        <p className="mb-2">画面共有映像</p>
+                        <video
+                          src={recordedScreen}
+                          controls
+                          playsInline
+                          style={{ width: '100%', maxHeight: '300px' }}
+                        />
+                      </div>
+                    )}
+                  </div>
                   <form onSubmit={handleEditRequest}>
                     <input type="file" ref={inputFileRef} className="hidden" />
                     <div className="flex gap-4">
@@ -325,31 +442,50 @@ export default function DashboardPage() {
                       >
                         確認して続行
                       </Button>
-                      {blob && (
-                        <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-2">
+                        {blob && (
                           <div>
-                            アップロードされた動画URL: <a href={blob.url} target="_blank" rel="noopener noreferrer">{blob.url}</a>
+                            <p>カメラ映像URL: <a href={blob.url} target="_blank" rel="noopener noreferrer">{blob.url}</a></p>
+                            <Button
+                              color="primary"
+                              onClick={() => {
+                                window.open(blob.url, '_blank');
+                                const link = document.createElement('a');
+                                link.href = blob.url;
+                                link.download = 'camera-video.webm';
+                                link.target = '_blank';
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                              className="mt-2"
+                            >
+                              カメラ映像をダウンロード
+                            </Button>
                           </div>
-                          <Button
-                            color="primary"
-                            onClick={() => {
-                              // 新しいタブで開く
-                              window.open(blob.url, '_blank');
-                              
-                              // ダウンロードリンクを作成して実行
-                              const link = document.createElement('a');
-                              link.href = blob.url;
-                              link.download = 'recorded-video.mp4';
-                              link.target = '_blank';
-                              document.body.appendChild(link);
-                              link.click();
-                              document.body.removeChild(link);
-                            }}
-                          >
-                            動画をダウンロード
-                          </Button>
-                        </div>
-                      )}
+                        )}
+                        {screenBlob && (
+                          <div className="mt-4">
+                            <p>画面共有映像URL: <a href={screenBlob.url} target="_blank" rel="noopener noreferrer">{screenBlob.url}</a></p>
+                            <Button
+                              color="primary"
+                              onClick={() => {
+                                window.open(screenBlob.url, '_blank');
+                                const link = document.createElement('a');
+                                link.href = screenBlob.url;
+                                link.download = 'screen-video.webm';
+                                link.target = '_blank';
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                              className="mt-2"
+                            >
+                              画面共有映像をダウンロード
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </CardBody>
