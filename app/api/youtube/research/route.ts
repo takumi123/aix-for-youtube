@@ -3,65 +3,53 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
-export async function GET() {
+export async function POST(request: Request) {
   try {
-    // セッションを取得
     const session = await getServerSession(authOptions);
     
-    // デバッグログ出力
-    console.log('セッション情報:', session);
-
     if (!session?.user?.accessToken) {
       throw new Error('アクセストークンが見つかりません。再度ログインしてください。');
     }
 
-    // OAuth2クライアントを初期化
+    const { searchQuery } = await request.json();
+
+    if (!searchQuery) {
+      throw new Error('検索キーワードが指定されていません。');
+    }
+
     const oauth2Client = new google.auth.OAuth2(
       process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
       process.env.NEXT_PUBLIC_GOOGLE_CLIENT_SECRET,
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/callback/google`
     );
 
-    // アクセストークンを設定
     oauth2Client.setCredentials({
       access_token: session.user.accessToken
     });
 
-    // YouTube Data APIクライアントを初期化
     const youtube = google.youtube({
       version: 'v3',
       auth: oauth2Client
     });
 
-    // チャンネル統計情報を取得
-    const channelResponse = await youtube.channels.list({
-      part: ['statistics', 'snippet'],
-      mine: true
+    // 検索結果を取得
+    const searchResponse = await youtube.search.list({
+      part: ['snippet'],
+      q: searchQuery,
+      type: ['video'],
+      maxResults: 50,
+      order: 'relevance'
     });
 
-    // チャンネル情報が存在しない場合はエラー
-    if (!channelResponse.data.items || channelResponse.data.items.length === 0) {
-      throw new Error('YouTubeチャンネル情報が見つかりません');
+    if (!searchResponse.data.items) {
+      throw new Error('検索結果が見つかりません');
     }
 
-    const channel = channelResponse.data.items[0];
-    const statistics = channel.statistics;
-    const snippet = channel.snippet;
-
-    // 動画一覧を取得
-    const videosResponse = await youtube.search.list({
-      part: ['id'],
-      channelId: channel.id ?? undefined,
-      order: 'date',
-      maxResults: 10,
-      type: ['video']
-    });
-
-    const videoIds = videosResponse.data.items?.map(item => item.id?.videoId || '') || [];
+    const videoIds = searchResponse.data.items.map(item => item.id?.videoId || '');
 
     // 動画の詳細情報を取得
     const videosDetailsResponse = await youtube.videos.list({
-      part: ['snippet', 'statistics'],
+      part: ['snippet', 'statistics', 'contentDetails'],
       id: videoIds
     });
 
@@ -70,21 +58,38 @@ export async function GET() {
       title: video.snippet?.title || '',
       description: video.snippet?.description || '',
       publishedAt: video.snippet?.publishedAt || '',
+      channelId: video.snippet?.channelId || '',
+      channelTitle: video.snippet?.channelTitle || '',
       viewCount: video.statistics?.viewCount || '0',
       likeCount: video.statistics?.likeCount || '0',
       commentCount: video.statistics?.commentCount || '0',
-      thumbnail: video.snippet?.thumbnails?.medium?.url || ''
+      duration: video.contentDetails?.duration || '',
+      thumbnail: video.snippet?.thumbnails?.medium?.url || '',
+      tags: video.snippet?.tags || [],
     }));
 
-    // 統計情報とチャンネル情報をレスポンス
+    // チャンネル情報を取得
+    const channelIds = [...new Set(videos?.map(video => video.channelId) || [])];
+    const channelsResponse = await youtube.channels.list({
+      part: ['snippet', 'statistics'],
+      id: channelIds
+    });
+
+    const channels = channelsResponse.data.items?.map(channel => ({
+      id: channel.id,
+      title: channel.snippet?.title || '',
+      description: channel.snippet?.description || '',
+      subscriberCount: channel.statistics?.subscriberCount || '0',
+      videoCount: channel.statistics?.videoCount || '0',
+      viewCount: channel.statistics?.viewCount || '0',
+      thumbnail: channel.snippet?.thumbnails?.medium?.url || '',
+    }));
+
     return NextResponse.json({
-      channelTitle: snippet?.title || 'チャンネル名なし',
-      channelDescription: snippet?.description || '説明なし',
-      subscriberCount: statistics?.subscriberCount || '0',
-      viewCount: statistics?.viewCount || '0', 
-      videoCount: statistics?.videoCount || '0',
-      publishedAt: snippet?.publishedAt || '不明',
-      videos: videos
+      searchQuery,
+      totalResults: searchResponse.data.pageInfo?.totalResults || 0,
+      videos,
+      channels
     });
 
   } catch (error) {

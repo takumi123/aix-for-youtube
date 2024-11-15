@@ -26,8 +26,27 @@ export default function DashboardPage() {
   const [editRequestText, setEditRequestText] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [blob, setBlob] = useState<PutBlobResult | null>(null);
+  const scriptRef = useRef<HTMLDivElement>(null);
   
   const [scriptContent, setScriptContent] = useState(`
+    こんにちは。本日のテーマは「効果的なクライアント集客方法」についてお話しします。
+    
+    私の経験から、以下の3つのポイントが重要です：
+    1. ターゲット層の明確化
+    2. 価値提供の具体化 
+    3. 継続的なコミュニケーション
+    
+    では、詳しく説明していきましょう。
+    
+    まず1つ目のターゲット層の明確化についてですが、ビジネスを成功させるためには、誰に向けてサービスを提供するのかを具体的に定める必要があります。年齢層、職業、興味関心、悩みなど、できるだけ詳細にペルソナを設定しましょう。
+    
+    2つ目の価値提供の具体化では、お客様が抱える課題に対して、どのような解決策を提供できるのかを明確にします。単なる商品やサービスの提供ではなく、それによってお客様の生活がどう改善されるのか、具体的なベネフィットを示すことが重要です。
+    
+    3つ目の継続的なコミュニケーションについては、一度きりの取引で終わらせるのではなく、長期的な関係性を築くことを目指します。定期的な情報発信やフォローアップ、カスタマーサポートの充実など、様々な接点を持ち続けることで、顧客ロイヤリティを高めることができます。
+    
+    これらの要素に加えて、オンラインマーケティングの活用も重要です。SNSやウェブサイト、メールマーケティングなど、デジタルツールを効果的に組み合わせることで、より広範囲に、かつ効率的に見込み客にアプローチすることが可能です。
+    
+    また、既存顧客からの紹介やクチコミも、新規顧客獲得の重要な手段となります。満足度の高いサービスを提供し、自然な形で推薦していただけるような関係性を構築することで、信頼性の高い形での集客が実現できます。
     こんにちは。本日のテーマは「効果的なクライアント集客方法」についてお話しします。
     
     私の経験から、以下の3つのポイントが重要です：
@@ -372,19 +391,53 @@ export default function DashboardPage() {
               </div>
               {/* 台本表示エリア */}
               <div className="w-[40%] mt-4">
-                <Card className="p-4 ">
-                  <CardHeader className="flex justify-between items-center mb-2 py-2">
+                <Card className="p-4 h-[calc(100vh-200px)] flex flex-col">
+                  <CardHeader className="flex justify-between items-center py-2">
                     <p className="text-xl font-semibold">台本</p>
                   </CardHeader>
                   <CardBody>
-                    <div className="">
-                      <Textarea
-                        value={scriptContent}
-                        onChange={(e) => setScriptContent(e.target.value)}
-                        className="w-full text-lg h-full"
-                        minRows={150}
-                        placeholder="台本を入力してください"
-                      />
+                    <div className="relative">
+                      <div 
+                        className="overflow-auto"
+                        ref={scriptRef}
+                        style={{ height: 'calc(100vh - 300px)' }}
+                      >
+                        <Textarea
+                          value={scriptContent}
+                          onChange={(e) => setScriptContent(e.target.value)}
+                          className="w-full text-lg"
+                          placeholder="台本を入力してください"
+                          maxRows={2000}
+                        />
+                      </div>
+                      <div className="absolute bottom-4 right-4 flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            if (scriptRef.current) {
+                              scriptRef.current.scrollBy({
+                                top: -100,
+                                behavior: 'smooth'
+                              });
+                            }
+                          }}
+                        >
+                          ↑
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            if (scriptRef.current) {
+                              scriptRef.current.scrollBy({
+                                top: 100,
+                                behavior: 'smooth'
+                              });
+                            }
+                          }}
+                        >
+                          ↓
+                        </Button>
+                      </div>
                     </div>
                   </CardBody>
                 </Card>
