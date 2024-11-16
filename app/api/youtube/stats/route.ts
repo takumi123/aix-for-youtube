@@ -1,12 +1,20 @@
 import { google } from 'googleapis';
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
+import { getServerSession } from 'next-auth';
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import type { Session } from 'next-auth';
+
+interface GoogleApiError {
+  response?: {
+    status: number;
+  };
+  message: string;
+}
 
 export async function GET() {
   try {
     // セッションを取得
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions) as Session;
     
     // デバッグログ出力
     console.log('セッション情報:', session);
@@ -22,10 +30,29 @@ export async function GET() {
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/callback/google`
     );
 
-    // アクセストークンを設定
-    oauth2Client.setCredentials({
-      access_token: session.user.accessToken
-    });
+    try {
+      // アクセストークンを設定
+      oauth2Client.setCredentials({
+        access_token: session.user.accessToken,
+        refresh_token: session.user.refreshToken
+      });
+
+      // トークンの有効性を確認
+      await oauth2Client.getTokenInfo(session.user.accessToken);
+    } catch (tokenError) {
+      const error = tokenError as GoogleApiError;
+      // トークンが無効な場合は、リフレッシュトークンを使用して更新を試みる
+      if (error.response?.status === 401 && session.user.refreshToken) {
+        try {
+          const { credentials } = await oauth2Client.refreshAccessToken();
+          oauth2Client.setCredentials(credentials);
+        } catch {
+          throw new Error('トークンの更新に失敗しました。再度ログインしてください。');
+        }
+      } else {
+        throw error;
+      }
+    }
 
     // YouTube Data APIクライアントを初期化
     const youtube = google.youtube({

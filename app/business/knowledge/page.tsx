@@ -1,13 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import Header from "@/app/components/Header";
-import Sidebar from "@/app/components/Business_Sidebar";
-import Footer from "@/app/components/Footer";
-import { useSession, signOut } from 'next-auth/react';
 
 export default function Knowledge() {
-  const { data: session } = useSession();
   const [uploadedFileUrl, setUploadedFileUrl] = useState<string>('');
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -37,25 +32,12 @@ export default function Knowledge() {
 
   return (
       <div className="min-h-screen bg-white text-black">
-        <Header />
+
         <div className="flex">
-          <Sidebar />
+
           <div className="flex-1 p-8">
             {/* ユーザー情報セクション */}
-            <div className="mb-8 bg-white p-6 rounded-lg shadow">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h2 className="text-xl font-bold text-black">ようこそ {session?.user?.name}さん</h2>
-                  <p className="text-sm text-gray-600">{session?.user?.email}</p>
-                </div>
-                <button
-                  onClick={() => signOut({ callbackUrl: '/auth/login' })}
-                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-                >
-                  ログアウト
-                </button>
-              </div>
-            </div>
+
 
             <div className="space-y-8">
               {/* ナレッジベースセクション */}
@@ -223,7 +205,6 @@ export default function Knowledge() {
           </div>
         </div>
         <div className="mt-8">
-          <Footer />
         </div>
       </div>
   );

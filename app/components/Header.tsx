@@ -13,7 +13,7 @@ export default function Header({ userName, userEmail, userImage }: HeaderProps) 
   return (
     <Navbar className="text-black">
       <NavbarBrand>
-        <Link href="/" className="font-bold text-black">
+        <Link href="/business/dashboard" className="font-bold text-black">
           AIx for Youtube
         </Link>
       </NavbarBrand>
@@ -23,8 +23,8 @@ export default function Header({ userName, userEmail, userImage }: HeaderProps) 
           <Dropdown>
             <DropdownTrigger>
               <User
-                name={userName || "ゲスト"}
-                description={userEmail || "未ログイン"}
+                name={userName}
+                description={userEmail}
                 avatarProps={{
                   src: userImage || "/default-avatar.png"
                 }}
