@@ -1,211 +1,441 @@
 'use client';
 
-import { useState } from 'react';
+import { Card, CardBody, Button, Chip, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure, Input, Textarea } from "@nextui-org/react";
+import { useState, useEffect, ChangeEvent, KeyboardEvent } from "react";
+import { useDropzone } from 'react-dropzone';
 
-export default function Knowledge() {
-  const [uploadedFileUrl, setUploadedFileUrl] = useState<string>('');
+interface Knowledge {
+  id: string;
+  title: string;
+  content: string;
+  category: string | null;
+  subCategory: string | null;
+  tags: string[];
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+  files: string[];
+}
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+interface KnowledgeUploadResponse {
+  fileUrls: string[];
+  category?: string;
+  subCategory?: string;
+  tags: string[];
+}
+
+export default function KnowledgePage() {
+  const [knowledgeList, setKnowledgeList] = useState<Knowledge[]>([]);
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [editingKnowledge, setEditingKnowledge] = useState<Knowledge | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [newTag, setNewTag] = useState("");
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+
+  const { getRootProps, getInputProps } = useDropzone({
+    onDrop: (acceptedFiles) => {
+      setUploadedFiles(prev => [...prev, ...acceptedFiles]);
+    },
+    multiple: true
+  });
+
+  useEffect(() => {
+    const fetchKnowledge = async () => {
+      try {
+        const response = await fetch('/api/knowledge');
+        if (!response.ok) {
+          throw new Error('ナレッジの取得に失敗しました');
+        }
+        const data: Knowledge[] = await response.json();
+        setKnowledgeList(data);
+      } catch (err) {
+        console.error('ナレッジ取得エラー:', err);
+        setKnowledgeList([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchKnowledge();
+  }, []);
+
+  const handleUploadFiles = async () => {
+    if (!uploadedFiles.length) return;
 
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      uploadedFiles.forEach((file) => {
+        formData.append('files', file);
+      });
 
       const response = await fetch('/api/business_data/knowledge_upload', {
         method: 'POST',
-        body: file
+        body: formData,
       });
 
       if (!response.ok) {
-        throw new Error('アップロードに失敗しました');
+        throw new Error('ファイルのアップロードに失敗しました');
       }
 
-      const data = await response.json();
-      setUploadedFileUrl(data.url);
+      const data: KnowledgeUploadResponse = await response.json();
 
-    } catch (error) {
-      console.error('アップロードエラー:', error);
+      if (editingKnowledge) {
+        setEditingKnowledge({
+          ...editingKnowledge,
+          files: [...(editingKnowledge.files || []), ...data.fileUrls],
+          category: data.category || editingKnowledge.category,
+          subCategory: data.subCategory || editingKnowledge.subCategory,
+          tags: [...new Set([...(editingKnowledge.tags || []), ...data.tags])]
+        });
+      }
+
+      setUploadedFiles([]);
+    } catch (err) {
+      console.error('ファイルアップロードエラー:', err);
+      alert(err instanceof Error ? err.message : 'ファイルのアップロードに失敗しました');
     }
   };
 
+  const handleEdit = (knowledge: Knowledge) => {
+    setEditingKnowledge({ ...knowledge });
+    onOpen();
+  };
+
+  const handleSave = async () => {
+    if (!editingKnowledge) return;
+
+    try {
+      const method = editingKnowledge.id ? 'PUT' : 'POST';
+      const url = editingKnowledge.id
+        ? `/api/knowledge/${editingKnowledge.id}`
+        : '/api/knowledge';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(editingKnowledge),
+      });
+
+      if (!response.ok) {
+        const errorResponse = await response.json();
+        const errorMessage = errorResponse.error || 'ナレッジの保存に失敗しました';
+
+        throw new Error(errorMessage);
+      }
+
+      const savedKnowledge: Knowledge = await response.json();
+
+      if (editingKnowledge.id) {
+        setKnowledgeList(knowledgeList.map((knowledge) =>
+          knowledge.id === savedKnowledge.id ? savedKnowledge : knowledge
+        ));
+      } else {
+        setKnowledgeList([savedKnowledge, ...knowledgeList]);
+      }
+
+      onClose();
+    } catch (err: unknown) {
+      console.error('ナレッジ保存エラー:', err);
+      if (err instanceof Error) {
+        alert(err.message);
+      }
+    }
+  };
+
+  const handleCreateScript = async (knowledgeId: string) => {
+    try {
+      const response = await fetch(`/api/scripts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          knowledgeId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('台本の作成に失敗しました');
+      }
+
+      const script: { id: string } = await response.json();
+      window.location.href = `/business/scripts/${script.id}`;
+    } catch (err) {
+      console.error('台本作成エラー:', err);
+      alert(err instanceof Error ? err.message : '台本の作成に失敗しました');
+    }
+  };
+
+  const handleDelete = async (knowledgeId: string) => {
+    if (!confirm('このナレッジを削除してもよろしいですか？')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/knowledge/${knowledgeId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('ナレッジの削除に失敗しました');
+      }
+
+      setKnowledgeList(knowledgeList.filter((knowledge) => knowledge.id !== knowledgeId));
+    } catch (err) {
+      console.error('ナレッジ削除エラー:', err);
+      alert(err instanceof Error ? err.message : 'ナレッジの削除に失敗しました');
+    }
+  };
+
+  const handleAddTag = () => {
+    if (!editingKnowledge || !newTag.trim()) return;
+
+    const trimmedTag = newTag.trim();
+    if (!editingKnowledge.tags.includes(trimmedTag)) {
+      setEditingKnowledge({
+        ...editingKnowledge,
+        tags: [...editingKnowledge.tags, trimmedTag],
+      });
+    }
+
+    setNewTag("");
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    if (!editingKnowledge) return;
+
+    setEditingKnowledge({
+      ...editingKnowledge,
+      tags: editingKnowledge.tags.filter((tag) => tag !== tagToRemove),
+    });
+  };
+
+  const handleCreateNew = () => {
+    setEditingKnowledge({
+      id: '',
+      title: '',
+      content: '',
+      category: null,
+      subCategory: null,
+      tags: [],
+      files: [],
+      userId: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    onOpen();
+  };
+
+  const handleInputChange = (field: keyof Knowledge) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (editingKnowledge) {
+      setEditingKnowledge({
+        ...editingKnowledge,
+        [field]: e.target.value,
+      });
+    }
+  };
+
+  const handleTagKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddTag();
+    }
+  };
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-screen">読み込み中...</div>;
+  }
+
   return (
-      <div className="min-h-screen bg-white text-black">
+    <div className="p-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">ナレッジ管理</h1>
+        <Button
+          color="primary"
+          onPress={handleCreateNew}
+        >
+          新規作成
+        </Button>
+      </div>
 
-        <div className="flex">
-
-          <div className="flex-1 p-8">
-            {/* ユーザー情報セクション */}
-
-
-            <div className="space-y-8">
-              {/* ナレッジベースセクション */}
-              <div className="bg-white p-6 rounded-lg shadow">
-                <h2 className="text-2xl font-bold mb-4 text-black">ナレッジ</h2>
-                <div className="flex">
-                  {/* サイドバー */}
-                  <div className="w-64 border-r pr-4">
-                    <div className="mb-4">
-                      <button className="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                        + 新規セクション
-                      </button>
-                    </div>
-                    <nav className="space-y-2">
-                      <div>
-                        <div className="p-2 hover:bg-gray-100 rounded cursor-pointer font-semibold">
-                          集客
-                        </div>
-                        <div className="ml-4 space-y-1">
-                          <div className="p-2 hover:bg-gray-100 rounded cursor-pointer text-sm">
-                            目的
-                          </div>
-                          <div className="p-2 hover:bg-gray-100 rounded cursor-pointer text-sm">
-                            ターゲット
-                          </div>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="p-2 hover:bg-gray-100 rounded cursor-pointer font-semibold">
-                          商品・サービス
-                        </div>
-                        <div className="ml-4 space-y-1">
-                          <div className="p-2 hover:bg-gray-100 rounded cursor-pointer text-sm">
-                            商品概要
-                          </div>
-                          <div className="p-2 hover:bg-gray-100 rounded cursor-pointer text-sm">
-                            価格設定
-                          </div>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="p-2 hover:bg-gray-100 rounded cursor-pointer font-semibold">
-                          マーケティング
-                        </div>
-                        <div className="ml-4 space-y-1">
-                          <div className="p-2 hover:bg-gray-100 rounded cursor-pointer text-sm">
-                            戦略
-                          </div>
-                          <div className="p-2 hover:bg-gray-100 rounded cursor-pointer text-sm">
-                            施策
-                          </div>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="p-2 hover:bg-gray-100 rounded cursor-pointer font-semibold">
-                          競合分析
-                        </div>
-                        <div className="ml-4 space-y-1">
-                          <div className="p-2 hover:bg-gray-100 rounded cursor-pointer text-sm">
-                            主要競合
-                          </div>
-                          <div className="p-2 hover:bg-gray-100 rounded cursor-pointer text-sm">
-                            差別化ポイント
-                          </div>
-                        </div>
-                      </div>
-                    </nav>
+      {knowledgeList.length === 0 ? (
+        <Card className="w-full">
+          <CardBody className="text-center py-8">
+            <p className="text-gray-500">ナレッジがありません。新しいナレッジを作成してください。</p>
+          </CardBody>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {knowledgeList.map((knowledge) => (
+            <Card key={knowledge.id} className="w-full">
+              <CardBody>
+                <div className="space-y-4">
+                  <div>
+                    <h2 className="text-xl font-semibold">{knowledge.title}</h2>
+                    <p className="text-sm text-gray-500">
+                      カテゴリー: {knowledge.category || '未分類'}
+                      {knowledge.subCategory && ` > ${knowledge.subCategory}`}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {knowledge.tags.map((tag, index) => (
+                      <Chip key={index} size="sm" variant="flat">
+                        {tag}
+                      </Chip>
+                    ))}
                   </div>
 
-                  {/* メインコンテンツエリア */}
-                  <div className="flex-1 pl-6">
-                    <div className="mb-4 flex justify-between items-center">
-                      <input
-                        type="text"
-                        className="text-xl font-semibold w-full border-b border-transparent focus:border-gray-300 focus:outline-none"
-                        defaultValue="集客 > 目的"
-                      />
-                      <button className="text-blue-500 hover:text-blue-700">
+                  <div className="text-sm text-gray-600 line-clamp-3">
+                    {knowledge.content}
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-xs text-gray-500">
+                      更新日: {new Date(knowledge.updatedAt).toLocaleDateString()}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        color="primary"
+                        variant="light"
+                        onPress={() => handleEdit(knowledge)}
+                      >
                         編集
-                      </button>
-                    </div>
-                    <div className="prose max-w-none">
-                      <textarea
-                        className="w-full h-[400px] p-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="ここにコンテンツを入力してください..."
-                      ></textarea>
-                    </div>
-                    <div className="mt-4 flex justify-end space-x-4">
-                      <button className="px-4 py-2 text-gray-600 hover:text-gray-800">
-                        AIで生成
-                      </button>
-                      <button className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-                        保存
-                      </button>
+                      </Button>
+                      <Button
+                        size="sm"
+                        color="success"
+                        variant="light"
+                        onPress={() => handleCreateScript(knowledge.id)}
+                      >
+                        台本作成
+                      </Button>
+                      <Button
+                        size="sm"
+                        color="danger"
+                        variant="light"
+                        onPress={() => handleDelete(knowledge.id)}
+                      >
+                        削除
+                      </Button>
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-            {/* アップロードセクション */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-2xl font-bold mb-4 text-black">ドキュメントアップロード</h2>
-              <div className="space-y-4">
-                <div className="flex items-center justify-center w-full">
-                  <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-white hover:bg-gray-50">
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <svg className="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                      </svg>
-                      <p className="mb-2 text-sm text-black">
-                        <span className="font-semibold">クリックしてアップロード</span> または ドラッグ＆ドロップ
-                      </p>
-                      <p className="text-xs text-black">PDF, DOCX, TXT (最大 10MB)</p>
-                    </div>
-                    <input 
-                      id="dropzone-file" 
-                      type="file" 
-                      className="hidden" 
-                      onChange={handleFileUpload}
+              </CardBody>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        size="3xl"
+        scrollBehavior="inside"
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                {editingKnowledge?.id ? 'ナレッジを編集' : '新規ナレッジ作成'}
+              </ModalHeader>
+              <ModalBody>
+                {editingKnowledge && (
+                  <div className="space-y-4">
+                    <Input
+                      label="タイトル"
+                      value={editingKnowledge.title}
+                      onChange={handleInputChange('title')}
                     />
-                  </label>
-                </div>
-                {uploadedFileUrl && (
-                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-600">アップロードされたファイル:</p>
-                    <a 
-                      href={uploadedFileUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 break-all"
+                    <Input
+                      label="カテゴリー"
+                      value={editingKnowledge.category || ''}
+                      onChange={handleInputChange('category')}
+                    />
+                    <Input
+                      label="サブカテゴリー"
+                      value={editingKnowledge.subCategory || ''}
+                      onChange={handleInputChange('subCategory')}
+                    />
+                    <Textarea
+                      label="内容"
+                      value={editingKnowledge.content}
+                      onChange={handleInputChange('content')}
+                      minRows={10}
+                    />
+                    <div>
+                      <p className="text-sm font-semibold mb-2">タグ:</p>
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {editingKnowledge.tags.map((tag, index) => (
+                          <Chip
+                            key={index}
+                            onClose={() => handleRemoveTag(tag)}
+                            variant="flat"
+                          >
+                            {tag}
+                          </Chip>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="新しいタグを追加"
+                          value={newTag}
+                          onChange={(e) => setNewTag(e.target.value)}
+                          onKeyPress={handleTagKeyPress}
+                        />
+                        <Button onClick={handleAddTag}>追加</Button>
+                      </div>
+                    </div>
+                    <div
+                      {...getRootProps()}
+                      className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-gray-400"
                     >
-                      {uploadedFileUrl}
-                    </a>
+                      <input {...getInputProps()} />
+                      <p>ファイルをドラッグ＆ドロップするか、クリックして選択してください</p>
+                    </div>
+                    {uploadedFiles.length > 0 && (
+                      <div>
+                        <p className="text-sm font-semibold mb-2">アップロード待ちファイル:</p>
+                        <ul className="list-disc pl-5">
+                          {uploadedFiles.map((file, index) => (
+                            <li key={index}>{file.name}</li>
+                          ))}
+                        </ul>
+                        <Button
+                          color="primary"
+                          className="mt-2"
+                          onClick={handleUploadFiles}
+                        >
+                          ファイルをアップロード
+                        </Button>
+                      </div>
+                    )}
+                    {editingKnowledge.files && editingKnowledge.files.length > 0 && (
+                      <div>
+                        <p className="text-sm font-semibold mb-2">アップロード済みファイル:</p>
+                        <ul className="list-disc pl-5">
+                          {editingKnowledge.files.map((file, index) => (
+                            <li key={index}>{file}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
-            </div>
-
-            {/* ドキュメント一覧セクション */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-2xl font-bold mb-4 text-black">アップロード済みドキュメント</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* ドキュメントカード */}
-                <div className="p-4 border rounded-lg hover:shadow-md transition-shadow bg-white">
-                  <div className="flex items-center space-x-3">
-                    <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                    </svg>
-                    <div>
-                      <h3 className="font-semibold text-black">サンプルドキュメント.pdf</h3>
-                      <p className="text-sm text-black">2024/01/01 アップロード</p>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex justify-end space-x-2">
-                    <button className="text-blue-600 hover:text-blue-800">
-                      ダウンロード
-                    </button>
-                    <button className="text-red-600 hover:text-red-800">
-                      削除
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="mt-8">
-        </div>
-      </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button color="danger" variant="light" onPress={onClose}>
+                  キャンセル
+                </Button>
+                <Button color="primary" onPress={handleSave}>
+                  保存
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+    </div>
   );
 }

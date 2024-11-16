@@ -11,7 +11,7 @@ interface HeaderProps {
 
 export default function Header({ userName, userEmail, userImage }: HeaderProps) {
   return (
-    <Navbar className="text-black">
+    <Navbar className="bg-white">
       <NavbarBrand>
         <Link href="/business/dashboard" className="font-bold text-black">
           AIx for Youtube
@@ -31,13 +31,12 @@ export default function Header({ userName, userEmail, userImage }: HeaderProps) 
                 className="cursor-pointer text-black"
               />
             </DropdownTrigger>
-            <DropdownMenu aria-label="ユーザーアクション" className="text-black">
-              <DropdownItem key="profile" className="text-black">プロフィール</DropdownItem>
-              <DropdownItem key="settings" className="text-black">設定</DropdownItem>
+            <DropdownMenu aria-label="ユーザーアクション">
+              <DropdownItem key="profile">プロフィール</DropdownItem>
+              <DropdownItem key="settings">設定</DropdownItem>
               <DropdownItem 
                 key="logout" 
-                color="danger" 
-                className="text-black"
+                color="danger"
                 onPress={() => signOut({ callbackUrl: '/auth/login' })}
               >
                 ログアウト

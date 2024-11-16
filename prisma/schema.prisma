@@ -63,7 +63,9 @@ model Knowledge {
   title         String
   content       String
   category      String?
+  subCategory   String?
   tags          String[]
+  files         String[]
   userId        String
   user          User      @relation(fields: [userId], references: [id])
   createdAt     DateTime  @default(now())

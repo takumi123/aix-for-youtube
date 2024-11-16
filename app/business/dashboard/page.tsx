@@ -5,27 +5,17 @@ import { Card, Button, CardHeader, CardBody, CardFooter, Select, SelectItem, Tex
 import type { PutBlobResult } from '@vercel/blob';
 import CheckoutButton from '../../components/CheckoutButton';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
-// Add Script interface
 interface Script {
-  id: number;
+  id: string;
   title: string;
   content: string;
+  status: 'draft' | 'published';
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
 }
-
-// Mock scripts data - replace with API call later
-const mockScripts: Script[] = [
-  {
-    id: 1,
-    title: "商品紹介動画 #1",
-    content: `# 動画台本\n\n## 導入部分\nこんにちは、[会社名]の[名前]です。\n今回は、弊社の新商品についてご紹介させていただきます。`
-  },
-  {
-    id: 2,
-    title: "サービス説明動画",
-    content: `# サービス説明\n\n## 概要\n私たちのサービスは、お客様のビジネスに革新的なソリューションを提供します。`
-  }
-];
 
 export default function DashboardPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -49,16 +39,38 @@ export default function DashboardPage() {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [blob, setBlob] = useState<PutBlobResult | null>(null);
   const [screenBlob, setScreenBlob] = useState<PutBlobResult | null>(null);
-  const [scripts] = useState<Script[]>(mockScripts);
-  const [selectedScriptId, setSelectedScriptId] = useState<number | null>(null);
+  const [scripts, setScripts] = useState<Script[]>([]);
+  const [selectedScriptId, setSelectedScriptId] = useState<string | null>(null);
   const [scriptContent, setScriptContent] = useState('');
+  const [loading, setLoading] = useState(true);
   const searchParams = useSearchParams();
+
+  // スクリプトデータの取得
+  useEffect(() => {
+    const fetchScripts = async () => {
+      try {
+        const response = await fetch('/api/scripts');
+        if (!response.ok) {
+          throw new Error('スクリプトの取得に失敗しました');
+        }
+        const data = await response.json();
+        setScripts(data);
+        setLoading(false);
+      } catch (err) {
+        console.error('スクリプト取得エラー:', err);
+        setScripts([]); // エラー時は空配列を設定
+        setLoading(false);
+      }
+    };
+
+    fetchScripts();
+  }, []);
 
   // Load script content from URL parameter
   useEffect(() => {
     const scriptId = searchParams.get('scriptId');
     if (scriptId) {
-      const script = scripts.find(s => s.id === parseInt(scriptId));
+      const script = scripts.find(s => s.id === scriptId);
       if (script) {
         setSelectedScriptId(script.id);
         setScriptContent(script.content);
@@ -68,9 +80,8 @@ export default function DashboardPage() {
 
   // Handle script selection
   const handleScriptChange = (scriptId: string) => {
-    const id = parseInt(scriptId);
-    setSelectedScriptId(id);
-    const script = scripts.find(s => s.id === id);
+    setSelectedScriptId(scriptId);
+    const script = scripts.find(s => s.id === scriptId);
     if (script) {
       setScriptContent(script.content);
     }
@@ -302,10 +313,13 @@ export default function DashboardPage() {
     setShowConfirmation(false);
   };
 
+  if (loading) {
+    return null;
+  }
+
   return (
     <NextUIProvider>
       <div className="container mx-auto px-4">
-        {/* ユーザー情報セクション */}
         <div className="flex gap-4">
           {/* 左カラム: カメラ/録画エリア */}
           <div className="w-[60%]">
@@ -491,7 +505,7 @@ export default function DashboardPage() {
                         )}
                         {screenBlob && (
                           <div className="mt-4">
-                            <p>画面共有���像URL: <a href={screenBlob.url} target="_blank" rel="noopener noreferrer">{screenBlob.url}</a></p>
+                            <p>画面共有映像URL: <a href={screenBlob.url} target="_blank" rel="noopener noreferrer">{screenBlob.url}</a></p>
                             <Button
                               color="primary"
                               onClick={() => {
@@ -541,7 +555,15 @@ export default function DashboardPage() {
             <Card className="p-4 h-[calc(100vh-200px)] flex flex-col">
               <CardHeader className="flex flex-col gap-4 py-2">
                 <div className="flex justify-between items-center w-full">
-                  <p className="text-xl font-semibold">台本</p>
+                  <p className="text-xl font-semibold">台本 (任意)</p>
+                  <Link href="/business/scripts/">
+                    <Button 
+                      color="primary"
+                      size="sm"
+                    >
+                      新規台本作成
+                    </Button>
+                  </Link>
                 </div>
                 <Select
                   label="台本を選択"
@@ -550,7 +572,7 @@ export default function DashboardPage() {
                   className="w-full"
                 >
                   {scripts.map((script) => (
-                    <SelectItem key={script.id} value={script.id.toString()}>
+                    <SelectItem key={script.id} value={script.id}>
                       {script.title}
                     </SelectItem>
                   ))}
@@ -563,13 +585,20 @@ export default function DashboardPage() {
                     ref={scriptRef}
                     style={{ height: 'calc(100vh - 300px)' }}
                   >
-                    <Textarea
-                      value={scriptContent}
-                      onChange={(e) => setScriptContent(e.target.value)}
-                      className="w-full text-lg"
-                      placeholder="台本を入力してください"
-                      maxRows={2000}
-                    />
+                    {scripts.length === 0 ? (
+                      <div className="text-center text-gray-500 py-4">
+                        <p>台本がありません。</p>
+                        <p>必要に応じて新規台本を作成してください。</p>
+                      </div>
+                    ) : (
+                      <Textarea
+                        value={scriptContent}
+                        onChange={(e) => setScriptContent(e.target.value)}
+                        className="w-full text-lg"
+                        placeholder="台本を選択してください"
+                        maxRows={2000}
+                      />
+                    )}
                   </div>
                   <div className="absolute bottom-4 right-4 flex gap-2">
                     <Button

@@ -1,7 +1,7 @@
 'use client';
 export default function Footer() {
   return (
-    <footer className="bg-gray-100 py-8">
+    <footer className="bg-white py-8 border-t border-gray-100">
       <div className="container mx-auto px-4">
         <div className="text-center">
           <h3 className="font-bold text-lg mb-4 text-black">AIx for Youtube</h3>
@@ -10,7 +10,7 @@ export default function Footer() {
           </p>
         </div>
 
-        <div className="border-t border-gray-200 mt-8 pt-8 text-center">
+        <div className="border-t border-gray-100 mt-8 pt-8 text-center">
           <p className="text-sm text-black">
             © {new Date().getFullYear()} AIx for Youtube. All rights reserved.
           </p>
