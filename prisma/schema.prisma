@@ -14,11 +14,69 @@ datasource db {
 }
 
 model User {
+  id                    String    @id @default(cuid())
+  email                 String    @unique
+  name                  String?
+  image                 String?
+  role                  String    @default("client") // client または editor
+  googleId              String    @unique
+  accessToken           String?   // YouTube API用のアクセストークン
+  refreshToken          String?   // アクセストークンのリフレッシュ用
+  accessTokenExpires    DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  scripts               Script[]
+  movies                Movie[]
+  knowledge             Knowledge[]
+}
+
+model Script {
   id            String    @id @default(cuid())
-  email         String    @unique
-  name          String?
-  password      String
-  role          String    @default("client") // client または editor
+  title         String
+  content       String
+  status        String    @default("draft") // draft, published
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  movie         Movie?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
+
+model Movie {
+  id            String    @id @default(cuid())
+  title         String
+  description   String?
+  videoUrl      String?
+  thumbnailUrl  String?
+  status        String    @default("draft") // draft, uploaded, published
+  scriptId      String?   @unique
+  script        Script?   @relation(fields: [scriptId], references: [id])
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  youtubeStats  YoutubeStats[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Knowledge {
+  id            String    @id @default(cuid())
+  title         String
+  content       String
+  category      String?
+  tags          String[]
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model YoutubeStats {
+  id            String    @id @default(cuid())
+  movieId       String
+  movie         Movie     @relation(fields: [movieId], references: [id])
+  views         Int       @default(0)
+  likes         Int       @default(0)
+  comments      Int       @default(0)
+  shares        Int       @default(0)
+  date          DateTime  @default(now())
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardHeader, CardBody, Button, Badge, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, NextUIProvider } from '@nextui-org/react';
-
+import Link from 'next/link';
 
 type VideoStatus = '未編集' | '編集中' | '編集完了' | 'アップロード済み';
 
@@ -13,6 +13,7 @@ interface Video {
   views?: number;
   likes?: number;
   comments?: number;
+  scriptId?: number;
 }
 
 export default function MovieListPage() {
@@ -26,7 +27,8 @@ export default function MovieListPage() {
       status: 'アップロード済み',
       views: 1200,
       likes: 45,
-      comments: 8
+      comments: 8,
+      scriptId: 2
     },
     {
       id: '2',
@@ -35,7 +37,8 @@ export default function MovieListPage() {
       status: '編集完了',
       views: 0,
       likes: 0,
-      comments: 0
+      comments: 0,
+      scriptId: 1
     },
     {
       id: '3',
@@ -61,7 +64,6 @@ export default function MovieListPage() {
   return (
     <NextUIProvider>
       <div className="min-h-screen bg-white">
-
         <div className="flex">
           <div className="container mx-auto px-4 py-8">
             <Card className="w-full">
@@ -85,7 +87,19 @@ export default function MovieListPage() {
                   <TableBody>
                     {videos.map((video) => (
                       <TableRow key={video.id}>
-                        <TableCell>{video.title}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            {video.title}
+                            {video.scriptId && (
+                              <Link 
+                                href={`/business/scripts/${video.scriptId}`}
+                                className="text-sm text-blue-600 hover:underline"
+                              >
+                                台本を表示
+                              </Link>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>{video.date}</TableCell>
                         <TableCell>
                           <Badge color={getStatusColor(video.status)}>

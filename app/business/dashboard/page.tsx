@@ -4,6 +4,28 @@ import { useRef, useState, useEffect } from 'react';
 import { Card, Button, CardHeader, CardBody, CardFooter, Select, SelectItem, Textarea, NextUIProvider } from '@nextui-org/react';
 import type { PutBlobResult } from '@vercel/blob';
 import CheckoutButton from '../../components/CheckoutButton';
+import { useSearchParams } from 'next/navigation';
+
+// Add Script interface
+interface Script {
+  id: number;
+  title: string;
+  content: string;
+}
+
+// Mock scripts data - replace with API call later
+const mockScripts: Script[] = [
+  {
+    id: 1,
+    title: "商品紹介動画 #1",
+    content: `# 動画台本\n\n## 導入部分\nこんにちは、[会社名]の[名前]です。\n今回は、弊社の新商品についてご紹介させていただきます。`
+  },
+  {
+    id: 2,
+    title: "サービス説明動画",
+    content: `# サービス説明\n\n## 概要\n私たちのサービスは、お客様のビジネスに革新的なソリューションを提供します。`
+  }
+];
 
 export default function DashboardPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -11,6 +33,7 @@ export default function DashboardPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const screenRecorderRef = useRef<MediaRecorder | null>(null);
   const inputFileRef = useRef<HTMLInputElement>(null);
+  const scriptRef = useRef<HTMLDivElement>(null);
   const [recording, setRecording] = useState(false);
   const [recordedVideo, setRecordedVideo] = useState<string | null>(null);
   const [recordedScreen, setRecordedScreen] = useState<string | null>(null);
@@ -26,30 +49,32 @@ export default function DashboardPage() {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [blob, setBlob] = useState<PutBlobResult | null>(null);
   const [screenBlob, setScreenBlob] = useState<PutBlobResult | null>(null);
-  const scriptRef = useRef<HTMLDivElement>(null);
-  
-  const [scriptContent, setScriptContent] = useState(`
-    こんにちは。本日のテーマは「効果的なクライアント集客方法」についてお話しします。
-    
-    私の経験から、以下の3つのポイントが重要です：
-    1. ターゲット層の明確化
-    2. 価値提供の具体化 
-    3. 継続的なコミュニケーション
-    
-    では、詳しく説明していきましょう。
-    
-    まず1つ目のターゲット層の明確化についてですが、ビジネスを成功させるためには、誰に向けてサービスを提供するのかを具体的に定める必要があります。年齢層、職業、興味関心、悩みなど、できるだけ詳細にペルソナを設定しましょう。
-    
-    2つ目の価値提供の具体化では、お客様が抱える課題に対して、どのような解決策を提供できるのかを明確にします。単なる商品やサービスの提供ではなく、それによってお客様の生活がどう改善されるのか、具体的なベネフィットを示すことが重要です。
-    
-    3つ目の継続的なコミュニケーションについては、一度きりの取引で終わらせるのではなく、長期的な関係性を築くことを目指します。定期的な情報発信やフォローアップ、カスタマーサポートの充実など、様々な接点を持ち続けることで、顧客ロイヤリティを高めることができます。
-    
-    これらの要素に加えて、オンラインマーケティングの活用も重要です。SNSやウェブサイト、メールマーケティングなど、デジタルツールを効果的に組み合わせることで、より広範囲に、かつ効率的に見込み客にアプローチすることが可能です。
-    
-    また、既存顧客からの紹介やクチコミも、新規顧客獲得の重要な手段となります。満足度の高いサービスを提供し、自然な形で推薦していただけるような関係性を構築することで、信頼性の高い形での集客が実現できます。
-    
-    最後に、これらの施策は一度実施して終わりではなく、継続的な改善が必要です。データ分析や顧客フィードバックを基に、常により良い方法を模索し、実践していくことが、長期的な成功につながります。
-  `);
+  const [scripts] = useState<Script[]>(mockScripts);
+  const [selectedScriptId, setSelectedScriptId] = useState<number | null>(null);
+  const [scriptContent, setScriptContent] = useState('');
+  const searchParams = useSearchParams();
+
+  // Load script content from URL parameter
+  useEffect(() => {
+    const scriptId = searchParams.get('scriptId');
+    if (scriptId) {
+      const script = scripts.find(s => s.id === parseInt(scriptId));
+      if (script) {
+        setSelectedScriptId(script.id);
+        setScriptContent(script.content);
+      }
+    }
+  }, [searchParams, scripts]);
+
+  // Handle script selection
+  const handleScriptChange = (scriptId: string) => {
+    const id = parseInt(scriptId);
+    setSelectedScriptId(id);
+    const script = scripts.find(s => s.id === id);
+    if (script) {
+      setScriptContent(script.content);
+    }
+  };
 
   // デバイス一覧の取得とデフォルト設定
   useEffect(() => {
@@ -466,7 +491,7 @@ export default function DashboardPage() {
                         )}
                         {screenBlob && (
                           <div className="mt-4">
-                            <p>画面共有映像URL: <a href={screenBlob.url} target="_blank" rel="noopener noreferrer">{screenBlob.url}</a></p>
+                            <p>画面共有���像URL: <a href={screenBlob.url} target="_blank" rel="noopener noreferrer">{screenBlob.url}</a></p>
                             <Button
                               color="primary"
                               onClick={() => {
@@ -510,11 +535,26 @@ export default function DashboardPage() {
               </div>
             </Card>
           </div>
+          
           {/* 台本表示エリア */}
           <div className="w-[40%] mt-4">
             <Card className="p-4 h-[calc(100vh-200px)] flex flex-col">
-              <CardHeader className="flex justify-between items-center py-2">
-                <p className="text-xl font-semibold">台本</p>
+              <CardHeader className="flex flex-col gap-4 py-2">
+                <div className="flex justify-between items-center w-full">
+                  <p className="text-xl font-semibold">台本</p>
+                </div>
+                <Select
+                  label="台本を選択"
+                  value={selectedScriptId?.toString()}
+                  onChange={(e) => handleScriptChange(e.target.value)}
+                  className="w-full"
+                >
+                  {scripts.map((script) => (
+                    <SelectItem key={script.id} value={script.id.toString()}>
+                      {script.title}
+                    </SelectItem>
+                  ))}
+                </Select>
               </CardHeader>
               <CardBody>
                 <div className="relative">
